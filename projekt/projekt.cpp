@@ -6,8 +6,9 @@
 #include <vector>
 #include <utility>
 int total_cost = 0, total_time = 0;
-int Tmax = 1000;
+int Tmax;
 const int MAX = std::numeric_limits<int>::max();
+//struktura potrzebna do przechowywania wszytskich informacji o zadaniu na jednostce, wykorzystana w wekotrze poniżej
 struct unit_for_task {
     int procNum;
     int procNumIndex;
@@ -18,9 +19,11 @@ struct unit_for_task {
 };
 class TaskGraph : public Graf {
 public:
-    std::vector<unit_for_task> chosen; // indeks to numer zadania
+    std::vector<unit_for_task> chosen;  // wektor do monitorowania jaka jednostka została przydzielona do jakiego zadania, indeks to numer zadania
     int num_of_tasks;
     int numOfPE;
+    // tablica typów jednostek, indeks to typ jednostki, dla każdego typu wektor instancji tych jednostek, 
+    // każda jednostka posiada wektor par, czyli interwały swojej pracy
     std::vector<std::vector<std::pair<int, int>>> work_times[30]; // indeks to numer procesora
     bool standardized = false;
     std::vector<std::vector<double>> standarized_procs;
@@ -36,6 +39,7 @@ public:
     }
     void assign_units_recursively(int start);
 
+    //obliczanie odchylenia standardowego
     template <typename T>
     double std_dev(const std::vector<std::vector<T>>& data, double mean_val) {
         double sum = 0.0;
@@ -48,7 +52,7 @@ public:
         }
         return std::sqrt(sum / count);
     }
-
+    //obliczanie średniej
     template <typename T>
     double mean(const std::vector<std::vector<T>>& data) {
         double sum = 0.0;
@@ -61,7 +65,7 @@ public:
         }
         return sum / count;
     }
-
+    //standaryzacja tablic z jednostkami, czasami, kosztami
     void standardize_all_arrays() {
         double mean_procs = mean(procs);
         double std_dev_procs = std_dev(procs, mean_procs);
@@ -94,7 +98,7 @@ public:
     }
 
 
-    //standaryzacja
+    //przypisz typ jednostki na podstawie standaryzacji
     void assign_unit(int task, int start_time, int ancestor){
         int assigned_unit;
         if (!standardized) {
@@ -119,13 +123,15 @@ public:
             }
         }
         assigned_unit = min_index;
+        // po wybraniu typu jednostki wybieram konkretną jej instancję, wpisuje czasy pracy i uzupełniam wektor wybrnaych jednostek
         if (assigned_unit == -1) std::cout << "-1";
+        // jeśli jednostka jest typu HC zawsze trzeba wybrać nową, bo może być użyta tylko raz
         if (!is_PP(assigned_unit)) {
             work_times[assigned_unit].push_back(std::vector<std::pair<int, int>>());
             int idx = work_times[assigned_unit].size();
             chosen[task] = { assigned_unit,idx,times[task][assigned_unit],costs[task][assigned_unit],start_time,start_time + times[task][assigned_unit] };
         }
-        //zakładam że nie ma celu monitorować czasu pracy jednostek HC
+        // jeśli typu PP ale jeszcze takiej nie używaliśmy wybieramy nową
         else if (work_times[assigned_unit].empty()) {
             chosen[task] = { assigned_unit,0,times[task][assigned_unit],costs[task][assigned_unit],start_time,start_time + times[task][assigned_unit] };
             work_times[assigned_unit].push_back(std::vector<std::pair<int, int>>());
@@ -145,6 +151,7 @@ public:
                 }
                 idx_of_PP++;
             }
+            // jeśli nie ma wolnej jednostki wybieram nową jednostkę
             if (!found_free_PP) {
                 chosen[task] = { assigned_unit,idx_of_PP,times[task][assigned_unit],costs[task][assigned_unit],start_time,start_time + times[task][assigned_unit] };
                 work_times[assigned_unit].push_back(std::vector<std::pair<int, int>>());
@@ -184,6 +191,10 @@ int main() {
     srand(time(nullptr));
     TaskGraph graph("graph.20.dat");
     
+    std::cout << "Podaj maksymalny czas pracy systemu: " << std::endl;
+    std::cin >> Tmax;
+
+
     int min_time_T0 = MAX;
     int min_index = 0;
 
