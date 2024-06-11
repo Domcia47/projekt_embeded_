@@ -59,6 +59,14 @@ public:
 		return false;
 	}
 
+	int edgeWeight(int i_Vertex_Index_1, int i_Vertex_Index_2) {
+		if (matrix[i_Vertex_Index_1][i_Vertex_Index_2] == 0) {
+			std::cerr << "Krawedz nie istnieje";
+			return 0;
+		}
+		else return matrix[i_Vertex_Index_1][i_Vertex_Index_2];
+	}
+
 	int vertexDegree(int idx)
 	{
 		int sum = 0;

@@ -1,5 +1,5 @@
 ﻿#include <iostream>
-#include "Graf.h"
+#include "Graf.hpp"
 #include <limits>
 #include <cmath>
 #include <ctime>
@@ -177,7 +177,7 @@ public:
         std::vector<int> children = getNeighbourIndices(start);
         for (int child : children) {
             if (chosen[child].procNum == -1) {
-                assign_unit(child, chosen[start].end_time, start);
+                assign_unit(child, chosen[start].end_time+edgeWeight(start,child)/10, start);
             }
             assign_units_recursively(child); // Rekurencyjne wywołanie dla dzieci dzieci
         }
