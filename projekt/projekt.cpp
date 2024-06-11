@@ -40,8 +40,18 @@ public:
         readFromFile("Graf");
         numOfPE = getNumberOfPE();
         num_of_tasks = getNumberOfEdges();
+        for (int i = 0; i < num_of_tasks; i++) {
+            chosen.push_back({ -1,-1,-1,-1,-1,-1 });
+        }
     }
-    //void assign_units_recursively(int start);
+    void clear() {
+        for (int i = 0; i < num_of_tasks; i++) {
+            chosen.push_back({ -1,-1,-1,-1,-1,-1 });
+        }
+        for (int i = 0; i < numOfPE; ++i) {
+            work_times[i].clear();
+        }
+    }
 
     //obliczanie odchylenia standardowego
     template <typename T>
@@ -241,7 +251,9 @@ public:
     int calculate_minimal_time() {
         assign_minimal_unit(0, 0);
         assign_minimal_units_recursively(0);
-        return find_shortest_path(0, chosen[0].time).total_time;
+        int minimal_time =  find_shortest_path(0, chosen[0].time).total_time;
+        clear();
+        return minimal_time;
     }
 };
 int main() {
@@ -263,9 +275,7 @@ int main() {
             min_index = i;
         }
     }
-    for (int i = 0; i < graph.num_of_tasks; i++) {
-        graph.chosen.push_back({ -1,-1,-1,-1,-1,-1 });
-    }
+    
 
     graph.chosen[0] = { min_index,0,graph.times[0][min_index], graph.costs[0][min_index], 0, graph.times[0][min_index] };
     if (graph.is_PP(min_index)) {

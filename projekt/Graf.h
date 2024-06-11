@@ -21,7 +21,7 @@ public:
 public:
     Graf();
     void createVertices(int ile);
-    void addEdge(int i_Vertex_Index_1, int i_Vertex_Index_2);
+    void addEdge(int i_Vertex_Index_1, int i_Vertex_Index_2, int weight);
     void removeEdge(int i_Vertex_Index_1, int i_Vertex_Index_2);
     bool checkEdge(int i_Vertex_Index_1, int i_Vertex_Index_2);
     int vertexDegree(int idx);

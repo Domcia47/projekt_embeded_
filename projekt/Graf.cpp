@@ -10,7 +10,7 @@ Graf::Graf() : matrix{}, numberOfVertices(0), numberOfEdges(0) {}
 
 void Graf::createVertices(int ile) { numberOfVertices = ile; }
 
-void Graf::addEdge(int i_Vertex_Index_1, int i_Vertex_Index_2) {
+void Graf::addEdge(int i_Vertex_Index_1, int i_Vertex_Index_2,int weight) {
     if (i_Vertex_Index_1 >= numberOfVertices ||
         i_Vertex_Index_2 >= numberOfVertices) {
         std::cerr << "Niepoprawne indeksy wierzcho�k�w\n";
@@ -20,33 +20,33 @@ void Graf::addEdge(int i_Vertex_Index_1, int i_Vertex_Index_2) {
         std::cerr << "Nie mo�na doda� kraw�dzi do wierzcho�ka\n";
         return;
     }
-    matrix[i_Vertex_Index_1][i_Vertex_Index_2] = 1;
+    matrix[i_Vertex_Index_1][i_Vertex_Index_2] = weight;
     numberOfEdges++;
 }
 
 void Graf::removeEdge(int i_Vertex_Index_1, int i_Vertex_Index_2) {
-    if (matrix[i_Vertex_Index_1][i_Vertex_Index_2] == 1) {
+    if (matrix[i_Vertex_Index_1][i_Vertex_Index_2] >= 1) {
         matrix[i_Vertex_Index_1][i_Vertex_Index_2] = 0;
         numberOfEdges--;
     }
 }
 
 bool Graf::checkEdge(int i_Vertex_Index_1, int i_Vertex_Index_2) {
-    if (matrix[i_Vertex_Index_1][i_Vertex_Index_2] == 1) return true;
+    if (matrix[i_Vertex_Index_1][i_Vertex_Index_2] >= 1) return true;
     return false;
 }
 
 int Graf::vertexDegree(int idx) {
     int sum = 0;
     for (int i = 0; i < numberOfVertices; i++) {
-        if (matrix[idx][i] == 1) sum++;
+        if (matrix[idx][i] >= 1) sum++;
     }
     return sum;
 }
 std::vector<int> Graf::getNeighbourIndices(int idx) {
     std::vector<int> neighbours;
     for (int i = 0; i < numberOfVertices; i++) {
-        if (matrix[idx][i] == 1) neighbours.push_back(i);
+        if (matrix[idx][i] >= 1) neighbours.push_back(i);
     }
     return neighbours;
 }
@@ -54,7 +54,7 @@ std::vector<int> Graf::getNeighbourIndices(int idx) {
 std::vector<int> Graf::getPredecessorIndices(int idx) {
     std::vector<int> predecessors;
     for (int i = 0; i < numberOfVertices; i++) {
-        if (matrix[i][idx] == 1) predecessors.push_back(i);
+        if (matrix[i][idx] >= 1) predecessors.push_back(i);
     }
     return predecessors;
 }
@@ -108,12 +108,18 @@ void Graf::readFromFile(std::string path) {
 
         iss >> token;
         while (iss >> token) {
-            if (token.back() == ')')
+            if (token.find('c') == std::string::npos) {
                 token.pop_back();
-            token.pop_back();
-            token.pop_back();
-            int child = std::stoi(token);
-            addEdge(parentnum, child);
+                size_t pos = token.find("(");
+                int child = std::stoi(token.substr(0, pos));
+                int weight = std::stoi(token.substr(pos + 1));
+                addEdge(parentnum, child, weight);
+            }
+            else {
+                size_t pos = token.find("c");
+                int child = std::stoi(token.substr(0, pos));
+                // tu coś dalej
+            }
         }
         parentnum++;
     }
