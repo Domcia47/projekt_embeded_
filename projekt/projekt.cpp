@@ -7,6 +7,10 @@
 #include <utility>
 int total_cost = 0, total_time = 0;
 int Tmax;
+struct Result {
+    std::vector<int> path;
+    int total_time;
+};
 const int MAX = std::numeric_limits<int>::max();
 //struktura potrzebna do przechowywania wszytskich informacji o zadaniu na jednostce, wykorzystana w wekotrze poniżej
 struct unit_for_task {
@@ -37,7 +41,7 @@ public:
         numOfPE = getNumberOfPE();
         num_of_tasks = getNumberOfEdges();
     }
-    void assign_units_recursively(int start);
+    //void assign_units_recursively(int start);
 
     //obliczanie odchylenia standardowego
     template <typename T>
@@ -185,15 +189,69 @@ public:
         }
         return total_cost;
     }
-       
+    void assign_minimal_units_recursively(int start) {
+        std::vector<int> children = getNeighbourIndices(start);
+        for (int child : children) {
+            if (chosen[child].procNum == -1) {
+                assign_minimal_unit(child, chosen[start].end_time);
+            }
+            assign_minimal_units_recursively(child); // Rekurencyjne wywołanie dla dzieci dzieci
+        }
+    }
+    void assign_minimal_unit(int task, int start_time) {
+        int min_time = MAX;
+        int index = -1;
+        for (int i = 0; i < numOfPE; i++) {
+            int time = times[task][i];
+            if (time < min_time) {
+                min_time = time;
+                index = i;
+            }
+        }
+        int assigned_unit = index;
+        work_times[assigned_unit].push_back(std::vector<std::pair<int, int>>());
+        int idx = work_times[assigned_unit].size();
+        chosen[task] = { assigned_unit,idx,times[task][assigned_unit],costs[task][assigned_unit],start_time,start_time + times[task][assigned_unit]};
+    }
+    Result find_shortest_path(int start, int previous_times) {
+        std::vector<int> children = getNeighbourIndices(start);
+
+        if (children.empty()) {
+            Result result;
+            result.path.push_back(start);
+            result.total_time = previous_times;
+            return result;
+        }
+
+        Result shortest_path_result;
+        shortest_path_result.total_time = std::numeric_limits<int>::max(); // Początkowo ustawiamy na maksymalną wartość
+
+        for (auto child : children) {
+            int total_time = chosen[child].end_time;
+            Result current_path_result = find_shortest_path(child, total_time);
+            int current_time = current_path_result.total_time;
+            if (current_time < shortest_path_result.total_time) {
+                shortest_path_result = current_path_result;
+            }
+        }
+
+        shortest_path_result.path.insert(shortest_path_result.path.begin(), start);
+        return shortest_path_result;
+    }
+    int calculate_minimal_time() {
+        assign_minimal_unit(0, 0);
+        assign_minimal_units_recursively(0);
+        return find_shortest_path(0, chosen[0].time).total_time;
+    }
 };
 int main() {
     srand(time(nullptr));
-    TaskGraph graph("graph.20.dat");
-    
+    TaskGraph graph("graf.txt");
+    int minimal_time = graph.calculate_minimal_time();
     std::cout << "Podaj maksymalny czas pracy systemu: " << std::endl;
     std::cin >> Tmax;
 
+    
 
     int min_time_T0 = MAX;
     int min_index = 0;
