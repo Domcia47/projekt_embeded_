@@ -151,7 +151,7 @@ Task parseTaskConnection(const std::string& input)
 	if (cPos != std::string::npos && cPos < openBracketPos)
 	{
 		// Extract conditional part
-		size_t commaPos    = input.find(',', openBracketPos);
+		size_t commaPos    = input.rfind(',', input.length() - 1);
 		result.conditional = input.substr(openBracketPos + 1, commaPos - openBracketPos - 1);
 
 		// Extract weight
