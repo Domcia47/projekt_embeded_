@@ -51,14 +51,18 @@ public:
 	std::vector<std::vector<double>> all_criteria;
 	std::vector<bool> visited;
 	std::queue<task_with_parent> tasks_to_do;
+	std::vector<bool> parent_executed;
 	double x = 1.0, y = 1.0, z = 1.0;
+	const double increaseFactor = 1.5; // Współczynnik wzmacniający wagę y
+	const double decreaseFactor = 0.7;
 
 	TaskGraph(std::string path)
 	{
 		readFromFile(path);
 		numOfPE      = getNumberOfPE();
-		num_of_tasks = getNumberOfEdges();
+		num_of_tasks = getNumberOfVertices();
 		visited.resize(num_of_tasks, false);
+		parent_executed.resize(num_of_tasks, false);
 
 		for (int i = 0; i < num_of_tasks; i++)
 			chosen.push_back({-1, -1, -1, -1, -1, -1});
@@ -70,6 +74,15 @@ public:
 
 		for (int i = 0; i < numOfPE; ++i)
 			work_times[i].clear();
+		
+		for (int i = 0; i < num_of_tasks; i++)
+			visited[i] = false;
+		
+		for (int i = 0; i < num_of_tasks; i++)
+			parent_executed[i] = false;
+		
+		
+		
 	}
 
 	// obliczanie odchylenia standardowego
@@ -106,7 +119,10 @@ public:
 	}
 	// standaryzacja tablic z jednostkami, czasami, kosztami
 	void standardize_all_arrays()
-	{
+	{	
+		standarized_costs.clear();
+		standarized_procs.clear();
+		standarized_times.clear();
 		double mean_procs    = mean(procs);
 		double std_dev_procs = std_dev(procs, mean_procs);
 		for (int i = 0; i < procs.size(); i++)
@@ -148,7 +164,10 @@ public:
 		{
 			standardize_all_arrays();
 			standardized = true;
-
+			/*if (!all_criteria.empty()) {
+				all_criteria.resize(0);
+			}*/
+			all_criteria.clear();
 			for (int i = 0; i < num_of_tasks; ++i)
 			{
 				std::vector<double> row;
@@ -268,16 +287,39 @@ public:
 			int value = std::stoi(match[1]);
 			int counter = 0;
 			for (int i = 0; i < num_of_tasks; i++) {
-				if (chosen[i].end_time < start_time) {
+				if (chosen[i].end_time > start_time) {
 					counter++;
 				}
 			}
 			if (counter > value) return true;
 		}
 		else if (std::regex_match(condition, match, exRangePattern)) {
-			int value1 = std::stoi(match[1]);
-			int value2 = std::stoi(match[2]);
-			
+			std::vector<int> values;
+			for (size_t i = 1; i < match.size(); ++i) {
+				if (match[i].matched) {
+					std::string valueStr = match[i].str();
+					std::regex numberPattern(R"(\d+)");
+					std::sregex_iterator begin(valueStr.begin(), valueStr.end(), numberPattern);
+					std::sregex_iterator end;
+					for (auto it = begin; it != end; ++it) {
+						values.push_back(std::stoi(it->str()));
+					}
+				}
+			}
+			int new_start_time = -1;
+			for (auto t : values) {
+				
+				if (chosen[t].end_time == -1) return false;
+				if ( chosen[t].end_time > new_start_time) {
+					 new_start_time = chosen[t].end_time;
+				}
+				
+			}
+			if (start_time != -1) {
+				chosen[task].start_time = new_start_time;
+				return true;
+			}
+			return true;
 		}
 		else {
 			std::cerr << "Unknown condition type" << std::endl;
@@ -291,8 +333,33 @@ public:
 			int task = tasks_to_do.front().task;
 			int parent = tasks_to_do.front().parent;
 			tasks_to_do.pop();
-			if (chosen[task].procNum == -1)
-				assign_unit(task, chosen[parent].end_time + edgeWeight(parent, task) / 10, parent);
+				
+			
+			if (chosen[task].procNum == -1) {
+				if (check_condtions(task, parent, chosen[parent].end_time) && parent_executed[task]) {
+
+					std::vector<int> children = getNeighbourIndices(task);
+					for (int child : children)
+					{
+						parent_executed[child] = true;
+					}
+					if (chosen[task].start_time == -1) {
+						assign_unit(task, chosen[parent].end_time + edgeWeight(parent, task) / 10, parent);
+					}
+					else {
+						if (chosen[task].start_time > chosen[parent].end_time) {
+							assign_unit(task, chosen[task].start_time, parent);
+						}
+						else {
+							assign_unit(task, chosen[parent].end_time + edgeWeight(parent, task) / 10, parent);
+						}
+					}
+				}
+
+				else {
+					tasks_to_do.push({ task,parent });
+				}
+			}
 		}
 	}
 	void add_tasks_to_queue(int start)
@@ -309,16 +376,6 @@ public:
 			add_tasks_to_queue(child);  // Rekurencyjne wywołanie dla dzieci dzieci
 		}
 		
-		
-		/*
-		std::vector<int> children = getNeighbourIndices(start);
-		for (int child : children)
-		{
-			if (chosen[child].procNum == -1)
-				assign_unit(child, chosen[start].end_time + edgeWeight(start, child) / 10, start);
-
-			assign_units_recursively(child);  // Rekurencyjne wywołanie dla dzieci dzieci
-		}*/
 	}
 	int calulate_total_tasks_cost()
 	{
@@ -423,56 +480,76 @@ int main()
 		std::cout << "Podano zbyt restrykcyjne ograniczenie czasowe, wprowadz nowa wartosc: " << std::endl;
 		std::cin >> Tmax;
 	}
+	while (true) {
+		int min_time_T0 = MAX;
+		int min_index = 0;
 
-	int min_time_T0 = MAX;
-	int min_index   = 0;
-
-	for (int i = 0; i < graph.numOfPE; i++)
-	{
-		// najmniejszy spośród uniwersalnych
-		if (graph.times[0][i] < min_time_T0 && graph.procs[i][1] > 0)
+		for (int i = 0; i < graph.numOfPE; i++)
 		{
-			min_time_T0 = graph.times[0][i];
-			min_index   = i;
+			// najmniejszy spośród uniwersalnych
+			if (graph.times[0][i] < min_time_T0 && graph.procs[i][1] > 0)
+			{
+				min_time_T0 = graph.times[0][i];
+				min_index = i;
+			}
+		}
+
+		//first task allocation
+		graph.chosen[0] = {
+			min_index, 0, graph.times[0][min_index], graph.costs[0][min_index], 0, graph.times[0][min_index] };
+		if (graph.is_PP(min_index))
+		{
+			graph.work_times[min_index].push_back(std::vector<std::pair<int, int>>());
+			graph.work_times[min_index][0].push_back(std::pair<int, int>(0, graph.chosen[0].end_time));
+		}
+		total_cost += graph.procs[min_index][0];
+		std::vector<int> children = graph.getNeighbourIndices(0);
+		for (int child : children)
+		{
+			graph.parent_executed[child] = true;
+		}
+
+		//assign units
+		graph.assign_units();
+
+		int max_time = 0, max_time_idx = -1;
+		for (int i = 0; i < graph.num_of_tasks; i++)
+		{
+			// obliczanie najdluzszego czasu wykonania zadania
+			if (graph.chosen[i].end_time > max_time)
+			{
+				max_time = graph.chosen[i].end_time;
+				max_time_idx = i;
+			}
+		}
+		total_time = max_time;
+		if (total_time <= Tmax) break;
+		else {
+			graph.clear();
+			graph.standardized = false;
+			graph.y *= graph.increaseFactor;
+			graph.x *= graph.decreaseFactor;
+			graph.z *= graph.decreaseFactor;
 		}
 	}
-
-	graph.chosen[0] = {
-		min_index, 0, graph.times[0][min_index], graph.costs[0][min_index], 0, graph.times[0][min_index]};
-	if (graph.is_PP(min_index))
-	{
-		graph.work_times[min_index].push_back(std::vector<std::pair<int, int>>());
-		graph.work_times[min_index][0].push_back(std::pair<int, int>(0, graph.chosen[0].end_time));
-	}
-	total_cost += graph.procs[min_index][0];
-	int start = 0;
-	graph.assign_units();
-
-	int max_time = 0, max_time_idx = -1;
 	for (int i = 0; i < graph.num_of_tasks; i++)
 	{
 		// obliczanie najdluzszego czasu wykonania zadania
-		if (graph.chosen[i].end_time > max_time)
-		{
-			max_time     = graph.chosen[i].end_time;
-			max_time_idx = i;
-		}
+
 		if (graph.is_PP(graph.chosen[i].procNum))
 		{
 			std::cout << "Zadanie T" << i << " wykonano na PP" << graph.chosen[i].procNum << "_"
-					  << graph.chosen[i].procNumIndex << " w czasie " << graph.chosen[i].start_time << " - "
-					  << graph.chosen[i].end_time << std::endl;
+				<< graph.chosen[i].procNumIndex << " w czasie " << graph.chosen[i].start_time << " - "
+				<< graph.chosen[i].end_time << std::endl;
 		}
 		else
 		{
 			std::cout << "Zadanie T" << i << " wykonano na HC" << graph.chosen[i].procNum << "_"
-					  << graph.chosen[i].procNumIndex << " w czasie " << graph.chosen[i].start_time << " - "
-					  << graph.chosen[i].end_time << std::endl;
+				<< graph.chosen[i].procNumIndex << " w czasie " << graph.chosen[i].start_time << " - "
+				<< graph.chosen[i].end_time << std::endl;
 		}
 	}
-	total_time = max_time;
-
 	std::cout << "Czas wykonania wszystkich zadan: " << total_time << std::endl;
-	std::cout << "Całkowity koszt systemu: " << graph.calulate_total_tasks_cost();
+	std::cout << "Calkowity koszt systemu: " << graph.calulate_total_tasks_cost();
 	return 0;
 }
