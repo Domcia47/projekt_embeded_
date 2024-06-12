@@ -234,7 +234,7 @@ void Graf::readFromFile(std::string path)
 	getline(file, line);
 	std::istringstream sss(line);
 	std::string proc_s;
-	sss >> proc_s >> proc_s;
+	sss >> proc_s >> proc_s >> proc_s;
 	numberOfPE = stoi(proc_s);
 	procs.resize(numberOfPE, std::vector<int>(2, 0));  // Inicjalizacja proc jako wektora wektorów z dwiema kolumnami
 
@@ -275,6 +275,7 @@ void Graf::readFromFile(std::string path)
 	{
 		getline(file, line);
 		std::istringstream iss(line);
+		iss >> token;
 		for (int j = 0; j < numberOfPE; j++)
 		{
 			iss >> token;

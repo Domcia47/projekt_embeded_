@@ -5,6 +5,7 @@
 #include <limits>
 #include <utility>
 #include <vector>
+#include <queue>
 
 #include "Graf.hpp"
 
@@ -28,6 +29,10 @@ struct unit_for_task
 	int start_time;
 	int end_time;
 };
+struct task_with_parent {
+	int task;
+	int parent;
+};
 class TaskGraph : public Graf
 {
 public:
@@ -43,6 +48,8 @@ public:
 	std::vector<std::vector<double>> standarized_times;
 	std::vector<std::vector<double>> standarized_costs;
 	std::vector<std::vector<double>> all_criteria;
+	std::vector<bool> visited;
+	std::queue<task_with_parent> tasks_to_do;
 	double x = 1.0, y = 1.0, z = 1.0;
 
 	TaskGraph(std::string path)
@@ -50,6 +57,7 @@ public:
 		readFromFile(path);
 		numOfPE      = getNumberOfPE();
 		num_of_tasks = getNumberOfEdges();
+		visited.resize(num_of_tasks, false);
 
 		for (int i = 0; i < num_of_tasks; i++)
 			chosen.push_back({-1, -1, -1, -1, -1, -1});
@@ -57,7 +65,7 @@ public:
 	void clear()
 	{
 		for (int i = 0; i < num_of_tasks; i++)
-			chosen.push_back({-1, -1, -1, -1, -1, -1});
+			chosen[i]={-1, -1, -1, -1, -1, -1};
 
 		for (int i = 0; i < numOfPE; ++i)
 			work_times[i].clear();
@@ -227,8 +235,33 @@ public:
 			}
 		}
 	}
-	void assign_units_recursively(int start)
-	{
+	
+	void assign_units() {
+		add_tasks_to_queue(0);
+		while (!tasks_to_do.empty()) {
+			int task = tasks_to_do.front().task;
+			int parent = tasks_to_do.front().parent;
+			tasks_to_do.pop();
+			if (chosen[task].procNum == -1)
+				assign_unit(task, chosen[parent].end_time + edgeWeight(parent, task) / 10, parent);
+		}
+	}
+	void add_tasks_to_queue(int start)
+	{	
+		std::vector<int> children = getNeighbourIndices(start);
+		
+		
+		for (int child : children)
+		{
+			if (!visited[child]) {
+				tasks_to_do.push({ child,start });
+				visited[child] = true;
+			}
+			add_tasks_to_queue(child);  // Rekurencyjne wywołanie dla dzieci dzieci
+		}
+		
+		
+		/*
 		std::vector<int> children = getNeighbourIndices(start);
 		for (int child : children)
 		{
@@ -236,7 +269,7 @@ public:
 				assign_unit(child, chosen[start].end_time + edgeWeight(start, child) / 10, start);
 
 			assign_units_recursively(child);  // Rekurencyjne wywołanie dla dzieci dzieci
-		}
+		}*/
 	}
 	int calulate_total_tasks_cost()
 	{
@@ -294,41 +327,36 @@ public:
 						start_time,
 						start_time + times[task][assigned_unit]};
 	}
-	Result find_shortest_path(int start, int previous_times)
-	{
+	Result find_critical_path(int start, int previous_times) {
 		std::vector<int> children = getNeighbourIndices(start);
 
-		if (children.empty())
-		{
+		if (children.empty()) {
 			Result result;
 			result.path.push_back(start);
 			result.total_time = previous_times;
 			return result;
 		}
 
-		Result shortest_path_result;
-		shortest_path_result.total_time =
-			std::numeric_limits<int>::max();  // Początkowo ustawiamy na maksymalną wartość
+		Result longest_path_result;
+		longest_path_result.total_time = 0;
 
-		for (auto child : children)
-		{
-			int total_time             = chosen[child].end_time;
-			Result current_path_result = find_shortest_path(child, total_time);
-			int current_time           = current_path_result.total_time;
-			if (current_time < shortest_path_result.total_time)
-			{
-				shortest_path_result = current_path_result;
+		for (auto child : children) {
+			int total_time = chosen[child].end_time;
+			Result current_path_result = find_critical_path(child, total_time);
+			int current_time = current_path_result.total_time;
+			if (current_time > longest_path_result.total_time) {
+				longest_path_result = current_path_result;
 			}
 		}
 
-		shortest_path_result.path.insert(shortest_path_result.path.begin(), start);
-		return shortest_path_result;
+		longest_path_result.path.insert(longest_path_result.path.begin(), start);
+		return longest_path_result;
 	}
 	int calculate_minimal_time()
 	{
 		assign_minimal_unit(0, 0);
 		assign_minimal_units_recursively(0);
-		int minimal_time = find_shortest_path(0, chosen[0].time).total_time;
+		int minimal_time = find_critical_path(0, chosen[0].time).total_time;
 		clear();
 		return minimal_time;
 	}
@@ -339,8 +367,13 @@ int main()
 	srand(time(nullptr));
 	TaskGraph graph("graf.txt");
 	int minimal_time = graph.calculate_minimal_time();
-	std::cout << "Podaj maksymalny czas pracy systemu: " << std::endl;
+	std::cout << "Podaj maksymalny czas pracy systemu (minimum "<<minimal_time <<"): " << std::endl;
 	std::cin >> Tmax;
+
+	while (Tmax < minimal_time) {
+		std::cout << "Podano zbyt restrykcyjne ograniczenie czasowe, wprowadz nowa wartosc: " << std::endl;
+		std::cin >> Tmax;
+	}
 
 	int min_time_T0 = MAX;
 	int min_index   = 0;
@@ -364,7 +397,7 @@ int main()
 	}
 	total_cost += graph.procs[min_index][0];
 	int start = 0;
-	graph.assign_units_recursively(start);
+	graph.assign_units();
 
 	int max_time = 0, max_time_idx = -1;
 	for (int i = 0; i < graph.num_of_tasks; i++)
