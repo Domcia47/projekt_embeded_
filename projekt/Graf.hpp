@@ -30,12 +30,12 @@ public:
 	{
 		if (i_Vertex_Index_1 >= numberOfVertices || i_Vertex_Index_2 >= numberOfVertices)
 		{
-			std::cerr << "Niepoprawne indeksy wierzcho�k�w\n";
+			std::cerr << "Niepoprawne indeksy wierzchołków\n";
 			return;
 		}
 		if (i_Vertex_Index_1 == i_Vertex_Index_2)
 		{
-			std::cerr << "Nie mo�na doda� kraw�dzi do wierzcho�ka\n";
+			std::cerr << "Nie można dodać krawędzi do wierzchołka\n";
 			return;
 		}
 
@@ -59,12 +59,15 @@ public:
 		return false;
 	}
 
-	int edgeWeight(int i_Vertex_Index_1, int i_Vertex_Index_2) {
-		if (matrix[i_Vertex_Index_1][i_Vertex_Index_2] == 0) {
+	int edgeWeight(int i_Vertex_Index_1, int i_Vertex_Index_2)
+	{
+		if (matrix[i_Vertex_Index_1][i_Vertex_Index_2] == 0)
+		{
 			std::cerr << "Krawedz nie istnieje";
 			return 0;
 		}
-		else return matrix[i_Vertex_Index_1][i_Vertex_Index_2];
+		else
+			return matrix[i_Vertex_Index_1][i_Vertex_Index_2];
 	}
 
 	int vertexDegree(int idx)
@@ -120,6 +123,72 @@ private:
 	void clear();
 };
 
+// Parsing conditional shenanigans
+struct Task
+{
+	int child;
+	int weight;
+	std::string conditional;
+};
+
+Task parseTaskConnection(const std::string& input)
+{
+	Task result;
+	result.conditional = "";
+
+	// Find the number at the front
+	size_t pos = 0;
+	while (pos < input.length() && isdigit(input[pos]))
+	{
+		pos++;
+	}
+	result.child = std::stoi(input.substr(0, pos));
+
+	// Check if there is a 'c' between the number and '('
+	size_t cPos           = input.find('c', pos);
+	size_t openBracketPos = input.find('(', pos);
+
+	if (cPos != std::string::npos && cPos < openBracketPos)
+	{
+		// Extract conditional part
+		size_t commaPos    = input.find(',', openBracketPos);
+		result.conditional = input.substr(openBracketPos + 1, commaPos - openBracketPos - 1);
+
+		// Extract weight
+		size_t closeBracketPos = input.find(')', commaPos);
+		result.weight          = std::stoi(input.substr(commaPos + 1, closeBracketPos - commaPos - 1));
+	}
+	else
+	{
+		// No 'c' found, just extract the number between the brackets
+		size_t closeBracketPos = input.find(')', openBracketPos);
+		result.weight          = std::stoi(input.substr(openBracketPos + 1, closeBracketPos - openBracketPos - 1));
+	}
+
+	return result;
+}
+std::vector<Task> parseTaskLine(const std::string& line)
+{
+	std::istringstream iss(line);
+	std::vector<Task> Tasks;
+	std::string token;
+	// Skip the first token (T<number>)
+	iss >> token;
+
+	int numTasks;
+	iss >> numTasks;
+
+	for (int i = 0; i < numTasks; ++i)
+	{
+		std::string TaskStr;
+		iss >> TaskStr;
+
+		Tasks.push_back(parseTaskConnection(TaskStr));
+	}
+
+	return Tasks;
+}
+
 // Leaving it here outside the class since it's a big boi
 void Graf::readFromFile(std::string path)
 {
@@ -145,28 +214,36 @@ void Graf::readFromFile(std::string path)
 	for (int i = 0; i < num; i++)
 	{
 		getline(file, line);
-		std::istringstream iss(line);
 
-		iss >> token;
-
-		iss >> token;
-		while (iss >> token)
+		auto tasks = parseTaskLine(line);
+		for (const auto& task : tasks)
 		{
-			if (token.find('c') == std::string::npos)
-			{
-				token.pop_back();
-				size_t pos = token.find("(");
-				int child  = std::stoi(token.substr(0, pos));
-				int weight = std::stoi(token.substr(pos + 1));
-				addEdge(parentnum, child, weight);
-			}
-			else
-			{
-				size_t pos = token.find("c");
-				int child  = std::stoi(token.substr(0, pos));
-				// tu coś dalej
-			}
+			addEdge(parentnum, task.child, task.weight);
+			// TODO coś zrobić z tym conditionalem (task.conditional)
 		}
+
+		// std::istringstream iss(line);
+
+		// iss >> token;
+
+		// iss >> token;
+		// while (iss >> token)
+		// {
+		// 	if (token.find('c') == std::string::npos)
+		// 	{
+		// 		token.pop_back();
+		// 		size_t pos = token.find("(");
+		// 		int child  = std::stoi(token.substr(0, pos));
+		// 		int weight = std::stoi(token.substr(pos + 1));
+		// 		addEdge(parentnum, child, weight);
+		// 	}
+		// 	else
+		// 	{
+		// 		size_t pos = token.find("c");
+		// 		int child  = std::stoi(token.substr(0, pos));
+		// 		// tu coś dalej
+		// 	}
+		// }
 		parentnum++;
 	}
 
