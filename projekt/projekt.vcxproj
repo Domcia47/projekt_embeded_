@@ -127,11 +127,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Graf.cpp" />
     <ClCompile Include="projekt.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Graf.h" />
     <ClInclude Include="Graf.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -211,7 +211,7 @@ void Graf::readFromFile(std::string path)
 
 	int num = std::stoi(tasksNum);
 	createVertices(num);
-	conditions.resize(num, "brak");
+	conditions.resize(num, "no");
 	
 	int parentnum = 0;
 	std::string token;

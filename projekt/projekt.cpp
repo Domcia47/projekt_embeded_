@@ -473,7 +473,7 @@ int main()
 	srand(time(nullptr));
 	TaskGraph graph("graf.txt");
 	int minimal_time = graph.calculate_minimal_time();
-	std::cout << "Podaj maksymalny czas pracy systemu (minimum "<<minimal_time <<"): " << std::endl;
+	std::cout << "Podaj maksymalny czas pracy systemu: " << std::endl;
 	std::cin >> Tmax;
 
 	while (Tmax < minimal_time) {
