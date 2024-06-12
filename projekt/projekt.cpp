@@ -47,7 +47,7 @@ public:
 
 	TaskGraph(std::string path)
 	{
-		readFromFile("Graf");
+		readFromFile(path);
 		numOfPE      = getNumberOfPE();
 		num_of_tasks = getNumberOfEdges();
 

@@ -15,6 +15,8 @@ public:
 	std::vector<std::vector<int>> times;
 	std::vector<std::vector<int>> costs;
 	std::vector<std::vector<int>> comms;
+	
+	std::vector<std::string> conditions;
 
 	int numberOfVertices = 0;
 	int numberOfEdges    = 0;
@@ -196,7 +198,7 @@ void Graf::readFromFile(std::string path)
 
 	if (!file.is_open())
 	{
-		std::cerr << "Nie można otworzyć pliku " << path << std::endl;
+		std::cerr << "Nie mozna otworzyc pliku " << path << std::endl;
 		return;
 	}
 
@@ -205,10 +207,12 @@ void Graf::readFromFile(std::string path)
 	std::getline(file, line);
 	std::istringstream ss(line);
 	std::string tasksNum;
-	ss >> tasksNum >> tasksNum;
+	ss >> tasksNum >> tasksNum >> tasksNum;
 
 	int num = std::stoi(tasksNum);
 	createVertices(num);
+	conditions.resize(num, "brak");
+	
 	int parentnum = 0;
 	std::string token;
 	for (int i = 0; i < num; i++)
@@ -218,32 +222,11 @@ void Graf::readFromFile(std::string path)
 		auto tasks = parseTaskLine(line);
 		for (const auto& task : tasks)
 		{
+			if(!task.conditional.empty()) conditions[task.child] = task.conditional;
 			addEdge(parentnum, task.child, task.weight);
-			// TODO coś zrobić z tym conditionalem (task.conditional)
+
 		}
 
-		// std::istringstream iss(line);
-
-		// iss >> token;
-
-		// iss >> token;
-		// while (iss >> token)
-		// {
-		// 	if (token.find('c') == std::string::npos)
-		// 	{
-		// 		token.pop_back();
-		// 		size_t pos = token.find("(");
-		// 		int child  = std::stoi(token.substr(0, pos));
-		// 		int weight = std::stoi(token.substr(pos + 1));
-		// 		addEdge(parentnum, child, weight);
-		// 	}
-		// 	else
-		// 	{
-		// 		size_t pos = token.find("c");
-		// 		int child  = std::stoi(token.substr(0, pos));
-		// 		// tu coś dalej
-		// 	}
-		// }
 		parentnum++;
 	}
 
