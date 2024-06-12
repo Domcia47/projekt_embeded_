@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 #include <queue>
+#include <regex>
 
 #include "Graf.hpp"
 
@@ -235,7 +236,55 @@ public:
 			}
 		}
 	}
-	
+	bool check_condtions(int task,int parent,int start_time) {
+		std::string condition = conditions[task];
+		std::regex minPattern(R"(min(\d+))");
+		std::regex exLessPattern(R"(ex\(<(\d+)\))");
+		std::regex exGreaterPattern(R"(ex\(>(\d+)\))");
+		std::regex exRangePattern(R"(ex\((\d+)(;\d+)*\))");
+		std::regex noPattern(R"(no)");
+
+		std::smatch match;
+		if (std::regex_match(condition, match, noPattern)) {
+			return true;
+		}
+		else if (std::regex_match(condition, match, minPattern)) {
+			int value = std::stoi(match[1]);
+			if (edgeWeight(parent,task)>=value ){
+				return true;
+			}
+		}
+		else if (std::regex_match(condition, match, exLessPattern)) {
+			int value = std::stoi(match[1]);
+			int counter = 0;
+			for (int i = 0; i < num_of_tasks; i++) {
+				if (chosen[i].end_time < start_time) {
+					counter++;
+				}
+			}
+			if (counter < value) return true;
+		}
+		else if (std::regex_match(condition, match, exGreaterPattern)) {
+			int value = std::stoi(match[1]);
+			int counter = 0;
+			for (int i = 0; i < num_of_tasks; i++) {
+				if (chosen[i].end_time < start_time) {
+					counter++;
+				}
+			}
+			if (counter > value) return true;
+		}
+		else if (std::regex_match(condition, match, exRangePattern)) {
+			int value1 = std::stoi(match[1]);
+			int value2 = std::stoi(match[2]);
+			
+		}
+		else {
+			std::cerr << "Unknown condition type" << std::endl;
+		}
+		return false;
+		
+	}
 	void assign_units() {
 		add_tasks_to_queue(0);
 		while (!tasks_to_do.empty()) {
